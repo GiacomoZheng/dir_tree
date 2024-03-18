@@ -1,49 +1,46 @@
-use std::collections::{HashMap, HashSet};
-use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::collections::HashSet;
 use std::path::PathBuf;
+use std::rc::Rc;
+use std::hash::Hash;
 
-use walkdir::{DirEntry, WalkDir};
+mod file;
+use file::get_yaml;
+use file::walk;
+
 use serde::Deserialize;
 use yaml_front_matter::YamlFrontMatter as YFM;
 
-fn is_hidden(entry: &DirEntry) -> bool {
-    // return false;
-    entry.file_name()
-         .to_str()
-         .map(|s| s.starts_with(".") && s != ".")
-         .unwrap_or(false)
-}
-
-fn walk(root : PathBuf) -> impl Iterator<Item = PathBuf> {
-    let walker = WalkDir::new(root);
-    walker.into_iter()
-          .filter_entry(|e| !is_hidden(e))
-          .map(|e| e.expect("walkdir::Error").path().to_path_buf())
-          .filter(|e| e.is_file())
-          .filter(|e| e.extension().unwrap() == "md")
-}
-
 #[derive(Deserialize, Default, Debug)]
-struct ActIndex {
-    title : String,
-    date : String,
-    description: String,
-    preliminaries: HashSet<String>,
-    tags : HashSet<String>
+pub struct ActIndex {
+    pub title : String,
+    pub date : String,
+    pub description: String,
+    pub dependencies: HashSet<String>,
+    pub tags : HashSet<String>,
 }
 impl ActIndex {
     fn parse(s : String) -> ActIndex {
         YFM::parse::<ActIndex>(s.as_str()).unwrap().metadata
     }
 }
-
+impl PartialEq for ActIndex {
+    fn eq(&self, other: &Self) -> bool {
+        self.title == other.title
+        //  && self.date == other.date && self.description == other.description && self.dependencies == other.dependencies && self.tags == other.tags
+    }
+}
+impl Eq for ActIndex {}
+impl Hash for ActIndex {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.title.hash(state);
+    }
+}
 #[test] fn t_actindex_parse() {
     let s = r"---
     title: '一般代数几何：概形族'
     date: 2023-02-03
     description:
-    preliminaries: []
+    dependencies: []
     tags:
       - 代数几何
       - 一般代数几何
@@ -53,40 +50,84 @@ impl ActIndex {
     assert!(ai.tags.contains("代数几何"));
 }
 
-fn resolve(root : PathBuf) -> HashMap<String, ActIndex> {
-    eprintln!("{:?}", "start");
-    let mut res = HashMap::new();
+/// to get info of all files
+pub fn resolve(root : PathBuf) -> HashSet<ActIndex> {
+    let mut set = HashSet::new();
     for path in walk(root) {
         eprintln!("path: {:?}", path);
-        let buf_reader = BufReader::new(File::open(path).unwrap());
-        let mut iterator = buf_reader.lines();
-        if let Some(Ok(s)) = iterator.next() {
-            if s.starts_with("---") {
-                let mut contents = String::from("---");
-                for line in iterator.filter_map(|e| e.ok()) {
-                    eprintln!("line: {:?}", line);
-                    contents.push_str("\n");
-                    if line.starts_with("---") {
-                        contents.push_str("---");
-                        let actIndex = ActIndex::parse(contents);
-                        let name = actIndex.title.clone();
-                        res.insert(name, actIndex);
-                        break;
-                    } else {
-                        contents.push_str(&line);
-                    }
-                }
+        if let Some(contents) = get_yaml(path) {
+            if !set.insert(ActIndex::parse(contents)) {
+                panic!("Repeated titles appears")
             }
         }
-        eprintln!("{:?}", res);
     }
-    res
+    set
 }
 
 #[test] fn t_resolve() {
     let root = PathBuf::from("../_published");
-    let ai = resolve(root);
-    eprintln!("{:?}", ai.keys().collect::<Vec<_>>());
-    assert!(ai.contains_key(&String::from("古典代数几何：切锥")));
-    assert!(!ai.contains_key(&String::from("cuspidal_curve_tan.svg")));
+    let titles = resolve(root).into_iter().map(|e| e.title.clone()).collect::<Vec<_>>();
+    eprintln!("titles: {:?}", titles);
+    assert!(titles.contains(&String::from("古典代数几何：切锥")));
+    assert!(!titles.contains(&String::from("cuspidal_curve_tan.svg")));
+}
+
+mod graph;
+pub use graph::{DotFile, DefaultIx};
+
+#[derive(Clone)]
+struct Node {
+    body : Rc<Box<ActIndex>>,
+    id : DefaultIx,
+    parents : HashSet<DefaultIx>,
+}
+impl Node {
+    fn title(&self) -> String {
+        self.body.title.clone()
+    }
+}
+
+/// to draw the tree of all files by dependencies
+fn tree(data : Vec<ActIndex>) -> String {
+    let mut vec_proto = Vec::new();
+    for (id, ai) in data.into_iter().enumerate() {
+        vec_proto.push(Node {
+            body : Rc::new(Box::new(ai)),
+            id : id as DefaultIx,
+            parents : HashSet::new()
+        })
+    }
+
+    let mut vec = vec_proto.clone();
+
+    for node in vec.iter_mut() {
+        eprintln!("title : {:?}", node.title());
+        eprintln!("deps : {:?}", &node.body.dependencies);
+        for dep in &node.body.dependencies {
+            if let Some(index) = vec_proto.iter().position(|e| e.body.title == *dep) {
+                node.parents.insert(index as DefaultIx);
+            } else {
+                
+                panic!("no such a dependency found")
+            }
+        }
+    }
+
+    let mut dot: DotFile<String> = DotFile::new_strict_digraph("rankdir=\"LR\";");
+
+    for i in 0..vec.len() {
+        dot.add_node(i, vec[i].title());
+    }
+
+    for node in vec.iter() {
+        for &j in node.parents.iter() {
+            dot.add_edge(node.id, j);
+        }
+    }
+
+    dot.to_string()
+}
+
+pub fn run(root : PathBuf) -> String {
+    tree(resolve(root).into_iter().collect())
 }
