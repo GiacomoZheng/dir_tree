@@ -121,7 +121,7 @@ fn tree(data : Vec<ActIndex>) -> String {
 
     for node in vec.iter() {
         for &j in node.parents.iter() {
-            dot.add_edge(node.id, j);
+            dot.add_edge(j, node.id);
         }
     }
 
