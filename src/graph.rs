@@ -1,5 +1,6 @@
 use std::fmt::{Debug, Display};
-pub type DefaultIx = usize;
+
+use super::DefaultIx;
 
 #[derive(Debug)]
 enum GraphType {
@@ -19,14 +20,14 @@ impl Display for GraphType {
 
 
 #[derive(Debug)]
-pub struct DotFile<N> {
+pub struct Graph<N> {
     graph_type : GraphType,
 	nodes : Vec<(DefaultIx, N)>,
 	edges : Vec<(DefaultIx, DefaultIx)>,
 	config : String,
 }
-impl<N : Debug + Display> Display for DotFile<N> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl<N : Debug + Display> Graph<N> {
+    pub fn to_dot_file(&self) -> String {
         let mut output = String::from(format!("{} {{\n", self.graph_type));
 
 		output.push_str(&self.config);
@@ -40,10 +41,11 @@ impl<N : Debug + Display> Display for DotFile<N> {
 		}
 
 		output.push_str("}");
-		write!(f, "{}", output)
+
+		output
     }
 }
-impl<N> DotFile<N> {
+impl<N> Graph<N> {
 	fn new(t : GraphType, config : &str) -> Self {
 		Self {
 			graph_type: t,
@@ -68,12 +70,11 @@ impl<N> DotFile<N> {
 }
 
 #[test] fn dot_file() {
-	let mut graph: DotFile<String> = DotFile::new_strict_digraph("");
+	let mut graph: Graph<String> = Graph::new_strict_digraph("");
 	graph.add_node(0, "A".to_string());
 	graph.add_node(1, "B".to_string());
 
 	graph.add_edge(0, 1);
 
-	eprintln!("{}", graph);
-	assert_eq!(format!("{}", graph), "strict digraph {\n    0 [label=\"A\"]\n    1 [label=\"B\"]\n    0 -> 1\n}".to_string())
+	assert_eq!(graph.to_dot_file(), "strict digraph {\n    0 [label=\"A\"]\n    1 [label=\"B\"]\n    0 -> 1\n}".to_string())
 }

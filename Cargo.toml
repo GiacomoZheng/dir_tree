@@ -10,5 +10,4 @@ walkdir = "2.4.0"
 serde = { version = "1.0.188", features = ["derive"] }
 yaml-front-matter = "0.1.0"
 clap = { version = "4.5.3", features = ["derive"] }
-petgraph = "0.6.4"
 layout-rs = { version = "0.1.2", features = ["log"] }
