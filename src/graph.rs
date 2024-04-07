@@ -1,5 +1,6 @@
 use std::fmt::{Debug, Display};
-pub type DefaultIx = usize;
+
+use super::DefaultIx;
 
 #[derive(Debug)]
 enum GraphType {
@@ -19,17 +20,16 @@ impl Display for GraphType {
 
 
 #[derive(Debug)]
-pub struct DotFile<N> {
+pub struct Graph<N> {
     graph_type : GraphType,
 	nodes : Vec<(DefaultIx, N)>,
-	edges : Vec<(DefaultIx, DefaultIx)>,
-	config : String,
+	edges : Vec<(DefaultIx, DefaultIx)>
 }
-impl<N : Debug + Display> Display for DotFile<N> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl<N : Debug + Display> Graph<N> {
+    pub fn to_dot_file(&self, config : &str) -> String {
         let mut output = String::from(format!("{} {{\n", self.graph_type));
 
-		output.push_str(&self.config);
+		output.push_str(&format!("{}\n", config));
 
 		for (i, node) in self.nodes.iter() {
 			output.push_str(&format!("    {i} [label=\"{}\"]\n", node));
@@ -40,23 +40,23 @@ impl<N : Debug + Display> Display for DotFile<N> {
 		}
 
 		output.push_str("}");
-		write!(f, "{}", output)
+
+		output
     }
 }
-impl<N> DotFile<N> {
-	fn new(t : GraphType, config : &str) -> Self {
+impl<N> Graph<N> {
+	fn new(t : GraphType) -> Self {
 		Self {
 			graph_type: t,
 			nodes: Vec::new(),
-			edges: Vec::new(),
-			config : config.to_string()
+			edges: Vec::new()
 		}
 	}
-	pub fn new_strict_digraph(config : &str) -> Self {
-		Self::new(GraphType::DiGraph {is_strict : true}, config)
+	pub fn new_strict_digraph() -> Self {
+		Self::new(GraphType::DiGraph {is_strict : true})
 	}
-	pub fn new_strict_graph(config : &str) -> Self {
-		Self::new(GraphType::Graph {is_strict : true}, config)
+	pub fn new_strict_graph() -> Self {
+		Self::new(GraphType::Graph {is_strict : true})
 	}
 
 	pub fn add_node(&mut self, id : DefaultIx, info : N) {
@@ -68,12 +68,13 @@ impl<N> DotFile<N> {
 }
 
 #[test] fn dot_file() {
-	let mut graph: DotFile<String> = DotFile::new_strict_digraph("");
+	let mut graph: Graph<String> = Graph::new_strict_digraph();
 	graph.add_node(0, "A".to_string());
 	graph.add_node(1, "B".to_string());
 
 	graph.add_edge(0, 1);
+	let mut dot_str = graph.to_dot_file("");
+	dot_str.retain(|c| !c.is_whitespace());
 
-	eprintln!("{}", graph);
-	assert_eq!(format!("{}", graph), "strict digraph {\n    0 [label=\"A\"]\n    1 [label=\"B\"]\n    0 -> 1\n}".to_string())
+	assert_eq!(dot_str, "strictdigraph{0[label=\"A\"]1[label=\"B\"]0->1}".to_string())
 }

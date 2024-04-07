@@ -35,7 +35,7 @@ pub fn get_yaml(path : PathBuf) -> Option<String> {
         if s.starts_with("---") {
             let mut contents = String::from("---");
             for line in iterator.filter_map(|e| e.ok()) {
-                eprintln!("line: {:?}", line);
+                // eprintln!("line: {:?}", line);
                 contents.push_str("\n");
                 if line.starts_with("---") {
                     contents.push_str("---");
@@ -48,4 +48,3 @@ pub fn get_yaml(path : PathBuf) -> Option<String> {
     }
     None
 }
-
