@@ -2,6 +2,8 @@
 # Created by https://www.toptal.com/developers/gitignore/api/rust-analyzer,rust,macos
 # Edit at https://www.toptal.com/developers/gitignore?templates=rust-analyzer,rust,macos
 
+*.svg
+
 ### macOS ###
 # General
 .DS_Store
@@ -9,7 +11,8 @@
 .LSOverride
 
 # Icon must end with two \r
-Icon
+Icon
+
 
 # Thumbnails
 ._*
