@@ -1,5 +1,7 @@
 use dir_tree::{resolve, tree};
 
+use std::fs::File;
+use std::io::Write;
 use std::path::PathBuf;
 use std::process::Command;
 use clap::Parser;
@@ -37,16 +39,10 @@ fn main() {
         };
         
         let dot = run(path, "rankdir=\"LR\"");
+        let mut f = File::create("output.dot").unwrap();
+        f.write(dot.as_bytes()).unwrap();
         eprintln!("dot: \n{}", dot);
 
-        let _output = if cfg!(target_os = "windows") {
-            panic!("unimplemented!")
-        } else {
-            Command::new("sh")
-                .arg("-c")
-                .arg(format!("echo '{dot}' | dot -Tsvg > output.svg"))
-                .output()
-                .expect("failed to execute process")
-        };
+        // "echo '{dot}' | dot -Tsvg > output.svg"
     }
 }
