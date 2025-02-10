@@ -46,7 +46,11 @@ impl Graph<String> {
 
         // add nodes
         for (&id, node) in nodes.iter() {
-            dot.add_node(id, node.title());
+            if node.is_root() {
+                dot.add_root(id, node.title());
+            } else {
+                dot.add_node(id, node.title());
+            }
         }
         // add edges
         for (&id, node) in nodes.iter() {

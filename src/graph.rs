@@ -22,7 +22,7 @@ impl Display for GraphType {
 #[derive(Debug)]
 pub struct Graph<N> {
     graph_type : GraphType,
-	nodes : Vec<(DefaultIx, N)>,
+	nodes : Vec<(DefaultIx, N, String)>,
 	edges : Vec<(DefaultIx, DefaultIx)>
 }
 impl<N : Debug + Display> Graph<N> {
@@ -31,8 +31,8 @@ impl<N : Debug + Display> Graph<N> {
 
 		output.push_str(&format!("{}\n", config));
 
-		for (i, node) in self.nodes.iter() {
-			output.push_str(&format!("    {i} [label=\"{}\"]\n", node));
+		for (i, node, layout) in self.nodes.iter() {
+			output.push_str(&format!("    {i} [label=\"{}\", {}]\n", node, layout));
 		}
 		
 		for (i, j) in self.edges.iter() {
@@ -60,7 +60,10 @@ impl<N> Graph<N> {
 	}
 
 	pub fn add_node(&mut self, id : DefaultIx, info : N) {
-		self.nodes.push((id, info));
+		self.nodes.push((id, info, String::from("shape=ellipse,")));
+	}
+	pub fn add_root(&mut self, id : DefaultIx, info : N) {
+		self.nodes.push((id, info, String::from("shape=ellipse, peripheries=2,")));
 	}
 	pub fn add_edge(&mut self, i : DefaultIx, j : DefaultIx) {
 		self.edges.push((i, j));

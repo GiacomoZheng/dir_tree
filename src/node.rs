@@ -71,6 +71,10 @@ impl Node {
         Node::from(YFM::parse(yfm.as_str()).unwrap().metadata)
     }
 
+    pub fn is_root(&self) -> bool {
+        self.parents.is_empty()
+    }
+
     pub fn title(&self) -> String {
         self.body.title.clone()
     }
